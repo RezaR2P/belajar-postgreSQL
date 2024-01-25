@@ -242,21 +242,81 @@ select power(10, 2);
 select sin(10),
 	cos(10),
 	tan(10);
+-- auto increment postgre memiliki tipe data serial number fitur ini yg akan automatis mengembalikan nilai yg selalu naik ketika dipanggil
+-- dengan serial kita tidak perlu mengisi secara manual secara otomatis nilai primary key akan naik
+create table admin (
+	id serial not null,
+	first_name varchar(100) not null,
+	last_name varchar (100),
+	primary key(id)
+);
+insert into "admin" (first_name, last_name)
+values('Budi', 'aja'),
+	('bambang', 'aja'),
+	('tatang', 'aja');
 select *
-from t_products tp;
-select *
-from t_order to2;
-select tor.id,
-	tor.barang_id as kode_barang,
-	tor.quantity,
-	tp.name,
-	tp.description
-from t_order tor
-	inner join t_products tp on tor.barang_id = tp.id;
-select tor.id,
-	tor.barang_id as kode_barang,
-	tor.quantity,
-	tp.name,
-	tp.description
-from t_order tor
-	RIGHT join t_products tp on tor.barang_id = tp.id;
+from "admin"
+select currval('admin_id_seq');
+-- sequence adalah fitur dimana kita bisa membuat auto incremement
+-- saat menggunakan tipe data serial pada primary key secara otomatis postgres akan membuat sequence
+create sequence test;
+-- membuat sequence
+select nextval('test');
+-- memanggil sequance dan akan terus bertambah ketika di panggil
+select currval('test');
+-- mengecek sudah sampai sequence ke berapa
+-- string function sama seperti number di postgre juga banyak menyediakan tipe data string
+select id,
+	lower(name),
+	lower(description),
+	length(name)
+from products p;
+-- date dan time function postgresql juga menyediakan banyak sekali function yg bisa kita gunakan untuk mengolah data tipe date and time
+-- menambah kolom timestamp
+select id,
+	extract (
+		year
+		from created_at
+	),
+	extract(
+		month
+		from created_at
+	)
+from products p;
+--flow control function ini mirip seperti if else di bahasa pemrograman tapi fitur ini tidak sekomplek bhs pemrograman 
+select id,
+	category
+from products p;
+select id,
+	category,
+	case
+		category
+		when 'Makanan' then 'Enak'
+		when 'Minuman' then 'Seger'
+		else 'Apa itu?'
+	end as category_case
+from products p;
+select id,
+	price
+from products p;
+select id,
+	price,
+	case
+		when price <= 15000 then 'murah'
+		when price >= 20000 then 'mahal'
+		else 'mahal banget'
+	end as apakah murah ?
+from products p;
+select id,
+	name,
+	description
+from products p;
+select id,
+	name,
+	case
+		when description is null then 'kosong'
+		else description
+	end as description
+from products p;
+-- aggregate function misal kita ingin melihat harga paling mahal di tabel products atau harga termurah atau rata rata harga products dll
+-- https://www.postgresql.org/docs/current/functions-aggregate.html
