@@ -320,3 +320,95 @@ select id,
 from products p;
 -- aggregate function misal kita ingin melihat harga paling mahal di tabel products atau harga termurah atau rata rata harga products dll
 -- https://www.postgresql.org/docs/current/functions-aggregate.html
+-- menghitung id
+select count(id)
+from products p;
+-- mencari rata rata harga
+select avg(price)
+from products p;
+-- mencari harga paling mahal
+select max(price)
+from products p;
+-- mencari harga paling murah
+select min(price)
+from products p;
+-- group by
+--Kadang saat melakukan aggregate, kita ingin datanya di grouping berdasarkan kriteria tertentu
+--Misal kita ingin melihat rata-rata harga product, tapi ingin per category
+--Atau kita ingin melihat total semua product, tapi per category
+--Hal ini bisa dilakukan di PostgreSQL dengan menggunakan GROUP BY clause
+--GROUP BY clause ini hanya bisa digunakan jika kita menggunakan aggregate function
+select category,
+	count(id) as "Total product"
+from products p
+group by category;
+select category,
+	avg(price),
+	min(price),
+	max(price)
+from products p
+group by category;
+-- Having Clause
+--Kadang kita ingin melakukan filter terhadap data yang sudah kita grouping
+--Misal kita ingin menampilkan rata-rata harga per kategori, tapi yang harganya diatas 10.000 misalnya
+--Jika menggunakan WHERE di SELECT, hal ini tidak bisa dilakukan
+--Untuk memfilter hasil aggregate function, kita harus menggunakan HAVING clause
+select category,
+	count(id)
+from products p
+group by category
+having count(id) > 5;
+select category,
+	avg(price),
+	min(price),
+	max(price)
+from products p
+group by category
+having avg(price) >= 15000;
+--Constraint
+--Di PostgreSQL, kita bisa menambahkan constraint untuk menjaga data di tabel tetap baik
+--Constraint sangat bagus ditambahkan untuk menjaga terjadi validasi yang salah di program kita, sehingga data yang masuk ke database tetap akan terjaga
+-- Unique Constraint
+--Unique constraint adalah constraint yang memastikan bahwa data kita tetap unique
+--Jika kita mencoba memasukkan data yang duplikat, maka PostgreSQL akan menolak data tersebut
+create table customer (
+	id serial not null,
+	email varchar(100) not null,
+	fist_name varchar(100) not null,
+	last_name varchar(100) not null,
+	primary key(id),
+	constraint unique_email unique (email)
+);
+alter table customer
+	rename fist_name to first_name;
+insert into customer (email, first_name, last_name)
+values ('rezaramdanp@gmail.com', 'Reza', 'Permana') -- karena emailnya menggunakan unique constrain maka akan terjadi error
+insert into customer (email, first_name, last_name)
+values ('rezaramdanp@gmail.com', 'Tatang', 'Budi')
+insert into customer (email, first_name, last_name)
+values ('udin@gmail.com', 'Udin', 'Budi')
+select *
+from customer;
+-- menghapus unique constraint
+alter table customer drop constraint unique_email;
+-- menambah unique constraint
+alter table customer
+add constraint unique_email unique(email);
+-- Check Constraint 
+--Check constraint adalah constraint yang bisa kita tambahkan kondisi pengecekannya
+--Ini cocok untuk mengecek data sebelum dimasukkan ke dalam database
+--Misal kita ingin memastikan bahwa harga harus diatas 1000 misal
+--Maka kita bisa menggunakan check constraint
+select *
+from products p;
+-- karena sudah ada tabel product maka kita tinggal menambahkan nya mengunakann alter table
+alter table products
+add constraint price_check check(price >= 1000);
+alter table products
+add constraint quantity_check check(quantity > 0);
+--contoh gagal 
+insert into products (id, name, price, quantity, category)
+values ('XXX1', 'Contoh Gagal', 10, 0 'Minuman') -- contoh berhasil
+insert into products (id, name, price, quantity, category)
+values ('XXX1', 'Thai Tea', 5000, 100, 'Minuman') -- menghapus constraint check
+alter table products drop constraint price_check;
