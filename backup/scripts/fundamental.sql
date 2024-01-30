@@ -408,7 +408,149 @@ alter table products
 add constraint quantity_check check(quantity > 0);
 --contoh gagal 
 insert into products (id, name, price, quantity, category)
-values ('XXX1', 'Contoh Gagal', 10, 0 'Minuman') -- contoh berhasil
+values ('XXX1', 'Contoh Gagal', 10, 0 'Minuman');
+--contoh berhasil
 insert into products (id, name, price, quantity, category)
-values ('XXX1', 'Thai Tea', 5000, 100, 'Minuman') -- menghapus constraint check
+values ('XXX1', 'Thai Tea', 5000, 100, 'Minuman');
+--menghapus constraint check
 alter table products drop constraint price_check;
+--index
+--Secara default, PostgreSQL akan menyimpan data di dalam disk seperti tabel biasanya
+--Hal ini menyebabkan, ketika kita mencari data, maka PostgreSQL akan melakukan pencarian dari baris pertama sampai terakhir, yang artinya semakin banyak datanya, maka akan semakin lambat proses pencarian datanya
+--Kita bisa ubah cara PostgreSQL menyimpan data pada kolom, agar mudah dicari, yaitu menggunakan Index
+--Saat kita membuat index, PostgreSQL akan menyimpan data dalam struktur data B-Tree : https://en.wikipedia.org/wiki/B-tree 
+--Tidak hanya akan mempermudah kita saat melakukan pencarian, index juga akan mempermudah kita ketika melakukan pengurutan menggunakan ORDER BY
+-- cara kerja index
+--Kita bisa membuat lebih dari satu index di table, dan setiap kita membuat index, kita bisa membuat index untuk beberapa kolom sekaligus
+--Misal kita membuat index
+--(col1, col2, col3)
+--Artinya kita punya kemampuan untuk mencari lebih menggunakan index untuk kombinasi query di (col1), (col1, col2) dan (col1, col2, col3)
+-- efek samping menggunakan index
+--Index mungkin akan mempercepat untuk proses pencarian dan query data
+--Namun, saat kita membuat index, artinya PostgreSQL akan melakukan proses update data di index tiap kali kita menambah, mengubah atau menghapus data di table
+--Artinya Index membuat proses pencarian dan query lebih cepat, tapi memperlambat proses manipulasi data (insert, update dan delete)
+--Oleh karena itu, kita harus bijak saat membuat index
+-- Tidak perlu index
+--Saat kita membuat PRIMARY KEY dan UNIQUE constraint, kita tidak perlu menambahkan lagi index
+--Hal ini dikarenakan PostgreSQL secara otomatis akan menambahkan index pada kolom PRIMARY KEY dan UNIQUE constraint
+-- membuat table sellers dengan metode index
+create table selers (
+	id serial not null,
+	name varchar(100) not null,
+	email varchar(100) not null,
+	primary key (id),
+	constraint email_unique unique(email)
+);
+-- merename nama tabel
+alter table selers
+	rename to sellers;
+-- memasukan data
+insert into sellers (name, email)
+values ('Reza', 'reza@gmail.com');
+insert into sellers (name, email)
+values ('tatang', 'tatang@gmail.com'),
+	('budi', 'budi@gmail.com'),
+('ase[', 'asep@gmail.com');
+select *
+from sellers;
+update sellers
+set name = 'asep'
+where id = 4;
+-- menambah index
+create index sellers_id_name_index on sellers(id, name);
+create index sellers_email_name_index on sellers(email, name);
+create index sellers_name_index on sellers (name);
+-- menghapus index 
+drop index nama_index;
+select *
+from sellers
+where id = 1;
+select *
+from sellers
+where id = 1
+	or name = 'budi';
+select *
+from sellers
+where email = 'asep@gmail.com'
+	or name = 'budi';
+select *
+from sellers
+where name = 'tatang';
+-- full-text search
+-- masalah dengan like operator
+--Kadang kita ingin mencari sebuah kata dalam tabel, dan biasanya kita akan menggunakan LIKE operator
+--Operasi yang dilakukan LIKE operator adalah dengan cara mencari seluruh data di tabel dari baris pertama sampai terakhir, hal ini membuat operasi LIKE sangat lambat
+--Menambah index di tabel juga tidak akan membantu, karen LIKE operator tidak menggunakan index
+--PostgreSQL menyediakan fitur Full Text Search jika ada kasus kita ingin melakukan hal ini
+--Full-Text Search memungkinkan kita bisa mencari sebagian kata di kolom dengan tipe data String
+--Ini sangat cocok ketika pada kasus kita memang membutuhkan pencarian yang tidak hanya sekedar operasi = (equals, sama dengan)
+--https://www.postgresql.org/docs/current/textsearch-intro.html 
+--Di PostgreSQL, Full-Text Search menggunakan function to_tsvector(text) dan to_tsquery(query)
+--Bahkan kita bisa menggunakan function tersebut tanpa membuat index, namun performanya akan sama saja dengan LIKE, lambat karena harus di cek satu-satu
+--Operator Full-Text Search menggunakan @@, bukan = 
+select *
+from products p;
+select *
+from products p
+where "name" ilike '%mie%';
+select *
+from products p
+where to_tsvector(name) @@ to_tsquery('mie');
+-- mengecek bahasa apa saja yg di dukung
+select cfgname
+from pg_ts_config;
+-- membuat dua indeks untuk pencarian teks penuh pada kolom name dan description di tabel products.
+-- to_tsvector('indonesian', name) mengubah nilai kolom name menjadi representasi vektor teks dengan konfigurasi bahasa Indonesia.
+-- USING gin menunjukkan penggunaan GIN (Generalized Inverted Index) untuk indeksasi, yang cocok untuk full-text search.
+create index products_name_search on products using gin (to_tsvector('indonesian', name));
+create index products_description_search on products using gin (to_tsvector('indonesian', description));
+-- melakukan pencarian full-text pada kolom name di tabel products.
+-- to_tsquery('mie') mengubah kata kunci 'mie' menjadi bentuk yang dapat digunakan untuk pencarian full-text.
+select *
+from products p
+where name @@ to_tsquery('mie');
+-- melakukan pencarian full-text pada kolom description di tabel products.
+-- Sama seperti sebelumnya, to_tsquery('mie') digunakan untuk membuat kata kunci pencarian.
+select *
+from products p
+where description @@ to_tsquery('mie');
+-- tipe data tsvector
+--Kita juga bisa secara otomatis membuat kolom dengan tipe data TSVECTOR
+--Secara otomatis kolom tersebut berisi text yang memiliki index Full-Text Search
+-- query operator
+--to_tsquery() mendukung banyak operator
+select *
+from products p
+where name @@ to_tsquery('mie');
+--& untuk AND
+select *
+from products p
+where name @@ to_tsquery('mie & ayam');
+--| untuk OR
+select *
+from products p
+where name @@ to_tsquery('mie | baso');
+--! untuk NOT
+select *
+from products p
+where name @@ to_tsquery('!baso');
+--“” untuk semua data
+select *
+from products p
+where name @@ to_tsquery('''es teh''');
+update products
+set name = 'Baso'
+where id = 'P0002';
+--Table Relationship
+--Dalam Relational DBMS, salah satu fitur andalan nya adalah table relationship. Yaitu relasi antar tabel
+--Kita bisa melakukan relasi dari satu tabel ke tabel lain.
+--Dalam kehidupan nyata pun pasti kita akan sering membuat relasi antar tabel
+--Misal, saat kita membuat aplikasi penjualan, di laporan penjualan pasti ada data barang. Jika di tabel artinya tabel penjualan akan berelasi dengan tabel barang
+--Misal dalam aplikasi kampus, tabel mahasiswa akan berelasi dengan tabel mata kuliah, dan tabel dosen
+--Dan lain-lain
+--Foreign Key
+--Saat membuat relasi tabel, biasanya kita akan membuat sebuah kolom sebagai referensi ke tabel lainnya
+--Misal saat kita membuat tabel penjualan, di dalam tabel penjualan, kita akan menambahkan kolom id_produk sebagai referensi ke tabel produk, yang berisi primary key di tabel produk
+--Kolom referensi ini di PostgreSQL dinamakan Foreign Key
+--Kita bisa menambah satu satu lebih foreign key ke dalam sebuah tabel
+--Membuat foreign key sama seperti membuat kolom biasanya, hanya saja kita perlu memberi tahu PostgreSQL bahwa itu adalah foreign key ke tabel lain
